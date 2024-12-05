@@ -1,0 +1,11 @@
+# Ignore build files and directories
+cmake-build-debug/
+*.o
+*.obj
+*.exe
+
+# Ignore CLion configuration files
+.idea/
+
+# Ignore ImGui configuration
+imgui.ini
