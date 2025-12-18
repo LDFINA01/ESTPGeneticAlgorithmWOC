@@ -1,5 +1,6 @@
 # Ignore build files and directories
 cmake-build-debug/
+build/
 *.o
 *.obj
 *.exe
@@ -9,3 +10,17 @@ cmake-build-debug/
 
 # Ignore ImGui configuration
 imgui.ini
+
+# Ignore executables and test apps
+ESTPGeneticAlgorithmWOC
+*.app/
+clipboard
+cursor
+events
+glfwinfo
+iconify
+monitors
+msaa
+offscreen
+reopen
+triangle-vulkan

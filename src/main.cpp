@@ -19,7 +19,7 @@ int main() {
     std::vector<double> averageDistances;
 
     // Loop over vertex counts: 20, 40, 60, 80, 100
-    for (int v = 20; v <= 200; v += 20) {
+    for (int v = 20; v <= 100; v += 20) {
         double totalDistanceForVertex = 0.0;
         int totalRuns = 0;
 
