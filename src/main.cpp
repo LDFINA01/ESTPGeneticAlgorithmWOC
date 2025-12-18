@@ -2,7 +2,7 @@
 
 #include "gui/graphVisualizer.h"
 #include "algorithms/geneticAlgorithm.h"
-#include "WOCAlgorithm.h"
+#include "algorithms/WOCAlgorithm.h"
 #include "utilities/randomWeightedGraph.h"
 #include "utilities/globalData.h"
 #include "common.h"
@@ -15,20 +15,25 @@ int main() {
     int populationSize;
     int generations = 30;
 
-    // Vector to store average distances for each vertex count
+    // Vector to store average distances for each node count
     std::vector<double> averageDistances;
+    
+    // Store best trees for visualization (only show GUI once)
+    SteinerTree bestSteinerTree;
+    SteinerTree bestWOCTree;
+    bool showGUI = false;
 
-    // Loop over vertex counts: 20, 40, 60, 80, 100
-    for (int v = 20; v <= 100; v += 20) {
+    // Loop over node counts: 20, 40, 60, 80, 100
+    for (int v = 20; v <= 40; v += 20) {
         double totalDistanceForVertex = 0.0;
         int totalRuns = 0;
 
-        // Set the population size equal to the number of vertices
+        // Set the population size equal to the number of nodes
         populationSize = v;
 
-        // Run 5 different random graphs for each vertex count
-        for (int g = 0; g < 5; ++g) {
-            // Set the global variable 'n' to the current number of vertices
+        // Run 5 different random graphs for each node count
+        for (int g = 0; g < 1; ++g) {
+            // Set the global variable 'n' to the current number of nodes
             n = v;
 
             // Generate a random weighted graph
@@ -36,11 +41,11 @@ int main() {
             graph.generateGraph();
 
             // Optional: Output the number of terminals if needed
-            std::cout << "\nNumber of vertices: " << n << "\n";
-            std::cout << "Number of terminal vertices: " << numTerminals << "\n";
+            std::cout << "\nNumber of nodes: " << n << "\n";
+            std::cout << "Number of terminal nodes: " << numTerminals << "\n";
 
             // Run the genetic algorithm 5 times on the same graph
-            for (int ga = 0; ga < 3; ++ga) {
+            for (int ga = 0; ga < 1; ++ga) {
                 timer.start();
 
                 // Run the genetic algorithm
@@ -55,25 +60,40 @@ int main() {
 
                 // Optional: Print the best distance for each run
                 std::cout << "Run " << (ga + 1) << " on graph " << (g + 1)
-                          << " for " << v << " vertices: Distance = " << distance << "\n";
+                          << " for " << v << " nodes: Distance = " << distance << "\n";
+                
+                // Generate WOC tree using MST-based strategy (only for first run)
+                if (!showGUI) {
+                    WOCAlgorithm wocAlgorithm;
+                    bestWOCTree = wocAlgorithm.generateSteinerTree(Strategy::MSTBased);
+                    bestSteinerTree = best[0];
+                    showGUI = true;
+                }
             }
         }
 
-        // Calculate the average distance for this vertex count
+        // Calculate the average distance for this node count
         double averageDistance = totalDistanceForVertex / totalRuns;
         averageDistances.push_back(averageDistance);
 
-        // Output the average distance for this vertex count
-        std::cout << "\nAverage distance for " << v << " vertices over " << totalRuns
+        // Output the average distance for this node count
+        std::cout << "\nAverage distance for " << v << " nodes over " << totalRuns
                   << " runs: " << averageDistance << "\n\n";
     }
 
     // Optionally, output all average distances at the end
     std::cout << "Summary of average distances:\n";
-    int vertexCount = 20;
+    int nodeCount = 20;
     for (double avgDist : averageDistances) {
-        std::cout << "Vertices: " << vertexCount << ", Average Distance: " << avgDist << "\n";
-        vertexCount += 20;
+        std::cout << "Nodes: " << nodeCount << ", Average Distance: " << avgDist << "\n";
+        nodeCount += 20;
+    }
+
+    // Display the GUI with the best trees
+    if (showGUI) {
+        std::cout << "\nOpening visualization window...\n";
+        graphVisualizer visualizer;
+        visualizer.displayPlot(bestSteinerTree, bestWOCTree);
     }
 
     return 0;

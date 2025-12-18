@@ -403,8 +403,8 @@ void randomMutation(std::vector<SteinerTree>& population, double mutationRate) {
                     int closestNode = -1;
                     double minDistance = std::numeric_limits<double>::max();
                     for (int node : pathSet) {
-                        double dx = vertices[node][1] - vertices[terminal][1];
-                        double dy = vertices[node][2] - vertices[terminal][2];
+                        double dx = nodes[node].x - nodes[terminal].x;
+                        double dy = nodes[node].y - nodes[terminal].y;
                         double dist = std::sqrt(dx * dx + dy * dy);
                         if (dist < minDistance) {
                             minDistance = dist;

@@ -19,7 +19,7 @@ void randomWeightedGraph::generateGraph() {
 }
 
 void randomWeightedGraph::getUserInput() {
-    std::cout << "How many vertices would you like? ";
+    std::cout << "How many nodes would you like? ";
     std::cin >> n;
     if (n <= 0) {
         std::cerr << "Wrong input." << std::endl;
@@ -43,7 +43,7 @@ void randomWeightedGraph::determineTerminalCount() {
 }
 
 void randomWeightedGraph::generateVertices() {
-    vertices.resize(n, std::vector<double>(4)); // [vertex number, x, y, terminal status]
+    nodes.resize(n);
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> coordDis(0.0, 100.0);
@@ -57,22 +57,21 @@ void randomWeightedGraph::generateVertices() {
     }
 
     for (int i = 0; i < n; ++i) {
-        vertices[i][0] = i; // vertex number
-        vertices[i][1] = coordDis(gen); // x coordinate
-        vertices[i][2] = coordDis(gen); // y coordinate
-        vertices[i][3] = 0; // default to non-terminal
+        nodes[i].x = coordDis(gen); // x coordinate
+        nodes[i].y = coordDis(gen); // y coordinate
+        nodes[i].isTerminal = false; // default to non-terminal
     }
     for (int idx : terminalVertices) {
-        vertices[idx][3] = 1; // mark as terminal
+        nodes[idx].isTerminal = true; // mark as terminal
     }
 }
 
 // Helper function to check if two edges intersect
 bool randomWeightedGraph::edgesIntersect(int a1, int a2, int b1, int b2) {
-    double x1 = vertices[a1][1], y1 = vertices[a1][2];
-    double x2 = vertices[a2][1], y2 = vertices[a2][2];
-    double x3 = vertices[b1][1], y3 = vertices[b1][2];
-    double x4 = vertices[b2][1], y4 = vertices[b2][2];
+    double x1 = nodes[a1].x, y1 = nodes[a1].y;
+    double x2 = nodes[a2].x, y2 = nodes[a2].y;
+    double x3 = nodes[b1].x, y3 = nodes[b1].y;
+    double x4 = nodes[b2].x, y4 = nodes[b2].y;
 
     // Exclude shared vertices
     if (a1 == b1 || a1 == b2 || a2 == b1 || a2 == b2)
@@ -118,15 +117,15 @@ void randomWeightedGraph::generateEdges() {
 
     for (int P = 0; P < n; ++P) {
         // Coordinates of P
-        double Px = vertices[P][1];
-        double Py = vertices[P][2];
+        double Px = nodes[P].x;
+        double Py = nodes[P].y;
 
         // Compute polar coordinates of other points relative to P
         std::vector<std::tuple<double, double, int>> polarCoords;
         for (int i = 0; i < n; ++i) {
             if (i == P) continue;
-            double dx = vertices[i][1] - Px;
-            double dy = vertices[i][2] - Py;
+            double dx = nodes[i].x - Px;
+            double dy = nodes[i].y - Py;
             double r = std::sqrt(dx * dx + dy * dy);
             double theta = std::atan2(dy, dx);
             if (theta < 0) theta += 2 * M_PI;
@@ -152,8 +151,8 @@ void randomWeightedGraph::generateEdges() {
                 }
             }
             if (!blocked) {
-                double dx = vertices[P][1] - vertices[C][1];
-                double dy = vertices[P][2] - vertices[C][2];
+                double dx = nodes[P].x - nodes[C].x;
+                double dy = nodes[P].y - nodes[C].y;
                 double dist = std::sqrt(dx * dx + dy * dy);
                 possibleEdges.push_back({P, C, dist});
             }
@@ -196,8 +195,8 @@ void randomWeightedGraph::generateEdges() {
             // Try to connect the disconnected component
             for (int j = 0; j < n; ++j) {
                 if (find(j) == root) {
-                    double dx = vertices[i][1] - vertices[j][1];
-                    double dy = vertices[i][2] - vertices[j][2];
+                    double dx = nodes[i].x - nodes[j].x;
+                    double dy = nodes[i].y - nodes[j].y;
                     double dist = std::sqrt(dx * dx + dy * dy);
                     EdgeInfo newEdge = {i, j, dist};
 

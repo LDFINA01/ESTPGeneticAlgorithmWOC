@@ -8,6 +8,10 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
+#ifdef __APPLE__
+#define GL_SILENCE_DEPRECATION
+#include <OpenGL/gl3.h>
+#endif
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <iostream>
@@ -21,9 +25,13 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
         return;
     }
 
-    // Configure GLFW
+    // Configure GLFW for Mac compatibility
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
     // Create window
     GLFWwindow* window = glfwCreateWindow(1280, 720, "Graph Visualization", NULL, NULL);
@@ -33,6 +41,7 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
         return;
     }
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // Enable vsync
 
     // Initialize ImGui and ImPlot
     IMGUI_CHECKVERSION();
@@ -43,19 +52,23 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
     // Setup ImGui style
     ImGui::StyleColorsDark();
 
-    // Initialize ImGui backends
+    // Initialize ImGui backends with Mac-compatible OpenGL version
     ImGui_ImplGlfw_InitForOpenGL(window, true);
+#ifdef __APPLE__
+    ImGui_ImplOpenGL3_Init("#version 330");
+#else
     ImGui_ImplOpenGL3_Init("#version 130");
+#endif
 
     SteinerTree randomPath = steinerTree;
 
-    // Prepare data for plotting vertices
+    // Prepare data for plotting nodes
     std::vector<double> vertexX;
     std::vector<double> vertexY;
 
-    for (const auto& vertex : vertices) {
-        vertexX.push_back(vertex[1]);
-        vertexY.push_back(vertex[2]);
+    for (const auto& node : nodes) {
+        vertexX.push_back(node.x);
+        vertexY.push_back(node.y);
     }
 
     // Prepare data for plotting edges
@@ -63,10 +76,10 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
     std::vector<std::pair<double, double>> edgePointsB;
 
     for (const auto& edge : edges) {
-        double x1 = vertices[edge.vertexA][1];
-        double y1 = vertices[edge.vertexA][2];
-        double x2 = vertices[edge.vertexB][1];
-        double y2 = vertices[edge.vertexB][2];
+        double x1 = nodes[edge.vertexA].x;
+        double y1 = nodes[edge.vertexA].y;
+        double x2 = nodes[edge.vertexB].x;
+        double y2 = nodes[edge.vertexB].y;
         edgePointsA.push_back({ x1, y1 });
         edgePointsB.push_back({ x2, y2 });
     }
@@ -77,10 +90,10 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
     for (size_t i = 0; i < randomPath.path.size() - 1; ++i) {
         int from = randomPath.path[i];
         int to = randomPath.path[i + 1];
-        double x1 = vertices[from][1];
-        double y1 = vertices[from][2];
-        double x2 = vertices[to][1];
-        double y2 = vertices[to][2];
+        double x1 = nodes[from].x;
+        double y1 = nodes[from].y;
+        double x2 = nodes[to].x;
+        double y2 = nodes[to].y;
         steinerEdgePointsA.push_back({ x1, y1 });
         steinerEdgePointsB.push_back({ x2, y2 });
     }
@@ -91,10 +104,10 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
     for (size_t i = 0; i < wocTree.path.size() - 1; ++i) {
         int from = wocTree.path[i];
         int to = wocTree.path[i + 1];
-        double x1 = vertices[from][1];
-        double y1 = vertices[from][2];
-        double x2 = vertices[to][1];
-        double y2 = vertices[to][2];
+        double x1 = nodes[from].x;
+        double y1 = nodes[from].y;
+        double x2 = nodes[to].x;
+        double y2 = nodes[to].y;
         wocEdgePointsA.push_back({ x1, y1 });
         wocEdgePointsB.push_back({ x2, y2 });
     }
@@ -123,17 +136,17 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
             // NEW TAB 1 - Graph
             //-----------------------------------------------------------------------------
             if (ImGui::BeginTabItem("Graph")) {
-                // Separate terminal and normal vertices
+                // Separate terminal and normal nodes
                 std::vector<double> terminalX, terminalY;
                 std::vector<double> normalX, normalY;
 
-                for (const auto& vertex : vertices) {
-                    if (vertex[3] == 1.0) { // Terminal vertex
-                        terminalX.push_back(vertex[1]);
-                        terminalY.push_back(vertex[2]);
-                    } else { // Normal vertex
-                        normalX.push_back(vertex[1]);
-                        normalY.push_back(vertex[2]);
+                for (size_t i = 0; i < nodes.size(); ++i) {
+                    if (nodes[i].isTerminal) { // Terminal node
+                        terminalX.push_back(nodes[i].x);
+                        terminalY.push_back(nodes[i].y);
+                    } else { // Normal node
+                        normalX.push_back(nodes[i].x);
+                        normalY.push_back(nodes[i].y);
                     }
                 }
 
@@ -188,21 +201,21 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
                     ImPlot::PlotScatter("Terminal Vertices", terminalX.data(), terminalY.data(), terminalX.size());
                     ImPlot::PopStyleColor(2);
 
-                    // Annotate all vertices with their indices
-                    for (size_t i = 0; i < vertices.size(); ++i) {
-                        double x = vertices[i][1];
-                        double y = vertices[i][2];
+                    // Annotate all nodes with their indices
+                    for (size_t i = 0; i < nodes.size(); ++i) {
+                        double x = nodes[i].x;
+                        double y = nodes[i].y;
                         // Adjust offset for better visibility
                         ImVec2 offset(5, 5); // Adjust as needed
                         // Set text color
                         ImVec4 textColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);  // Black
-                        // Annotate the vertex with its index
+                        // Annotate the node with its index
                         ImPlot::Annotation(
                                 x, y,                   // Data coordinates
                                 textColor,              // Text color
                                 offset,                 // Pixel offset from the data point
                                 true,                   // Clamp annotation within plot area
-                                "%zu", i                // Format string to display the vertex index
+                                "%zu", i                // Format string to display the node index
                         );
                     }
 
@@ -216,17 +229,17 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
             //-----------------------------------------------------------------------------
             if (ImGui::BeginTabItem("Steiner Tree")) {
                 // Code is similar to previous "Graph" tab, but includes the Steiner Path
-                // Separate terminal and normal vertices
+                // Separate terminal and normal nodes
                 std::vector<double> terminalX, terminalY;
                 std::vector<double> normalX, normalY;
 
-                for (const auto& vertex : vertices) {
-                    if (vertex[3] == 1.0) { // Terminal vertex
-                        terminalX.push_back(vertex[1]);
-                        terminalY.push_back(vertex[2]);
-                    } else { // Normal vertex
-                        normalX.push_back(vertex[1]);
-                        normalY.push_back(vertex[2]);
+                for (size_t i = 0; i < nodes.size(); ++i) {
+                    if (nodes[i].isTerminal) { // Terminal node
+                        terminalX.push_back(nodes[i].x);
+                        terminalY.push_back(nodes[i].y);
+                    } else { // Normal node
+                        normalX.push_back(nodes[i].x);
+                        normalY.push_back(nodes[i].y);
                     }
                 }
 
@@ -281,21 +294,21 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
                     ImPlot::PlotScatter("Terminal Vertices", terminalX.data(), terminalY.data(), terminalX.size());
                     ImPlot::PopStyleColor(2);
 
-                    // Annotate all vertices with their indices
-                    for (size_t i = 0; i < vertices.size(); ++i) {
-                        double x = vertices[i][1];
-                        double y = vertices[i][2];
+                    // Annotate all nodes with their indices
+                    for (size_t i = 0; i < nodes.size(); ++i) {
+                        double x = nodes[i].x;
+                        double y = nodes[i].y;
                         // Adjust offset for better visibility
                         ImVec2 offset(5, 5); // Adjust as needed
                         // Set text color
                         ImVec4 textColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);  // Black
-                        // Annotate the vertex with its index
+                        // Annotate the node with its index
                         ImPlot::Annotation(
                                 x, y,                   // Data coordinates
                                 textColor,              // Text color
                                 offset,                 // Pixel offset from the data point
                                 true,                   // Clamp annotation within plot area
-                                "%zu", i                // Format string to display the vertex index
+                                "%zu", i                // Format string to display the node index
                         );
                     }
 
@@ -318,17 +331,17 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
         // TAB 3 - WOC Tree
         //-----------------------------------------------------------------------------
             if (ImGui::BeginTabItem("WOC Tree")) {
-                // Separate terminal and normal vertices
+                // Separate terminal and normal nodes
                 std::vector<double> terminalX, terminalY;
                 std::vector<double> normalX, normalY;
 
-                for (const auto& vertex : vertices) {
-                    if (vertex[3] == 1.0) { // Terminal vertex
-                        terminalX.push_back(vertex[1]);
-                        terminalY.push_back(vertex[2]);
-                    } else { // Normal vertex
-                        normalX.push_back(vertex[1]);
-                        normalY.push_back(vertex[2]);
+                for (size_t i = 0; i < nodes.size(); ++i) {
+                    if (nodes[i].isTerminal) { // Terminal node
+                        terminalX.push_back(nodes[i].x);
+                        terminalY.push_back(nodes[i].y);
+                    } else { // Normal node
+                        normalX.push_back(nodes[i].x);
+                        normalY.push_back(nodes[i].y);
                     }
                 }
 
@@ -383,21 +396,21 @@ void graphVisualizer::displayPlot(SteinerTree steinerTree, SteinerTree wocTree) 
                     ImPlot::PlotScatter("Terminal Vertices", terminalX.data(), terminalY.data(), terminalX.size());
                     ImPlot::PopStyleColor(2);
 
-                    // Annotate all vertices with their indices
-                    for (size_t i = 0; i < vertices.size(); ++i) {
-                        double x = vertices[i][1];
-                        double y = vertices[i][2];
+                    // Annotate all nodes with their indices
+                    for (size_t i = 0; i < nodes.size(); ++i) {
+                        double x = nodes[i].x;
+                        double y = nodes[i].y;
                         // Adjust offset for better visibility
                         ImVec2 offset(5, 5); // Adjust as needed
                         // Set text color
                         ImVec4 textColor = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);  // Black
-                        // Annotate the vertex with its index
+                        // Annotate the node with its index
                         ImPlot::Annotation(
                                 x, y,                   // Data coordinates
                                 textColor,              // Text color
                                 offset,                 // Pixel offset from the data point
                                 true,                   // Clamp annotation within plot area
-                                "%zu", i                // Format string to display the vertex index
+                                "%zu", i                // Format string to display the node index
                         );
                     }
 

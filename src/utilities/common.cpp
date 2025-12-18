@@ -88,8 +88,8 @@ double computeTotalDistance(const std::vector<int> &path) {
 
         // If edge not found in the edges list, compute Euclidean distance
         if (!edgeFound) {
-            double dx = vertices[u][1] - vertices[v][1];
-            double dy = vertices[u][2] - vertices[v][2];
+            double dx = nodes[u].x - nodes[v].x;
+            double dy = nodes[u].y - nodes[v].y;
             double dist = std::sqrt(dx * dx + dy * dy);
             totalDistance += dist;
         }
@@ -122,7 +122,7 @@ void incrementEdgeFrequencies(const std::vector<SteinerTree>& trees) {
 
     // Iterate over each tree in the vector
     for (const auto& tree : trees) {
-        const std::vector<int>& path = tree.path; // The sequence of vertices in the tree
+        const std::vector<int>& path = tree.path; // The sequence of nodes in the tree
 
         // Increment frequency for each edge in the tree's path
         for (size_t i = 0; i + 1 < path.size(); ++i) {
@@ -190,8 +190,8 @@ int findClosestNode(int terminal, const std::vector<int>& path) {
     double minDistance = std::numeric_limits<double>::max();
     int closestNode = -1;
     for (int node : path) {
-        double dx = vertices[node][1] - vertices[terminal][1];
-        double dy = vertices[node][2] - vertices[terminal][2];
+        double dx = nodes[node].x - nodes[terminal].x;
+        double dy = nodes[node].y - nodes[terminal].y;
         double dist = std::sqrt(dx * dx + dy * dy);
         if (dist < minDistance) {
             minDistance = dist;
